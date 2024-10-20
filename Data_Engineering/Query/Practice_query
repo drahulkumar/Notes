@@ -1,0 +1,151 @@
+-- Hive Query Practice   /https://demo.gethue.com/hue/editor?editor=65555/ --
+
+CREATE TABLE employees_new ( id INT, name VARCHAR(100), department VARCHAR(50), salary DECIMAL(10, 2) ); 
+
+INSERT INTO employees (id, name, department, salary) VALUES
+(1, 'Alice Smith', 'HR', 55000.00),
+(2, 'Bob Johnson', 'Finance', 65000.00),
+(3, 'Charlie Brown', 'IT', 60000.00),
+(4, 'David Wilson', 'Marketing', 52000.00),
+(5, 'Eve Davis', 'HR', 58000.00),
+(6, 'Frank Miller', 'Finance', 70000.00),
+(7, 'Grace Lee', 'IT', 62000.00),
+(8, 'Hank Garcia', 'Marketing', 51000.00),
+(9, 'Ivy Martinez', 'HR', 56000.00),
+(10, 'Jack Thomas', 'Finance', 68000.00),
+(11, 'Kathy Anderson', 'IT', 64000.00),
+(12, 'Leo Thompson', 'Marketing', 53000.00),
+(13, 'Mona Walker', 'HR', 60000.00),
+(14, 'Nina Hall', 'Finance', 72000.00),
+(15, 'Oscar Young', 'IT', 65000.00),
+(16, 'Paula Hernandez', 'Marketing', 54000.00),
+(17, 'Quinn King', 'HR', 59000.00),
+(18, 'Ryan Wright', 'Finance', 75000.00),
+(19, 'Sara Scott', 'IT', 67000.00),
+(20, 'Tom Green', 'Marketing', 55000.00),
+(21, 'Uma Adams', 'HR', 57500.00),
+(22, 'Vera Carter', 'Finance', 68000.00),
+(23, 'Will Campbell', 'IT', 68000.00),
+(24, 'Xena Mitchell', 'Marketing', 56000.00),
+(25, 'Yara Rodriguez', 'HR', 59000.00),
+(26, 'Zack Lewis', 'Finance', 70000.00),
+(27, 'Amy Walker', 'IT', 62000.00),
+(28, 'Ben Hall', 'Marketing', 53000.00),
+(29, 'Cathy Young', 'HR', 55000.00),
+(30, 'Derek Scott', 'Finance', 72000.00),
+(31, 'Eva King', 'IT', 61000.00),
+(32, 'Finn Wright', 'Marketing', 52000.00),
+(33, 'Gina Adams', 'HR', 60000.00),
+(34, 'Harry Johnson', 'Finance', 74000.00),
+(35, 'Isla Davis', 'IT', 64000.00),
+(36, 'James Miller', 'Marketing', 55000.00),
+(37, 'Kelly Brown', 'HR', 58000.00),
+(38, 'Leo Garcia', 'Finance', 71000.00),
+(39, 'Mia Lee', 'IT', 67000.00),
+(40, 'Nate Thompson', 'Marketing', 54000.00),
+(41, 'Olivia Anderson', 'HR', 59000.00),
+(42, 'Paul Martinez', 'Finance', 73000.00),
+(43, 'Quincy Thomas', 'IT', 66000.00),
+(44, 'Rachel Walker', 'Marketing', 53000.00),
+(45, 'Steve Hall', 'HR', 60000.00),
+(46, 'Tina Young', 'Finance', 68000.00),
+(47, 'Ursula Wright', 'IT', 68000.00),
+(48, 'Victor Green', 'Marketing', 55000.00),
+(49, 'Wendy Adams', 'HR', 57500.00),
+(50, 'Xander Lewis', 'Finance', 70000.00);
+
+
+SELECT  department , max(salary) AS max_salary FROM employees_new
+GROUP BY department;
+
+
+SELECT e.*,
+max(salary) OVER() AS max_salary
+FROM employees_new e;
+
+
+SELECT e.*,
+max(salary) OVER(PARTITION BY department) AS max_salary
+FROM employees_new e;
+
+-- Row number() --
+
+SELECT e.* , 
+row_number() OVER(PARTITION BY e.department) AS RN
+FROM employees_new e;
+
+-- First 2 employee to join each department
+
+SELECT * FROM
+  (SELECT e.* , 
+row_number() OVER(PARTITION BY e.department ORDER BY e.id ) AS RN
+FROM employees_new e) AS X
+WHERE x.RN <3;
+
+
+-- Fetech top 3 employe in each department who have max salary
+
+
+--this is not correct --
+SELECT * FROM
+(SELECT e.* ,
+row_number() OVER( PARTITION BY e.department ORDER BY e.salary DESC) AS RN
+FROM employees_new e) AS X
+WHERE X.RN <4;
+
+SELECT * FROM (
+  SELECT e.* , 
+  rank() OVER(PARTITION BY e.department ORDER BY e.salary DESC) AS rank
+  FROM employees_new e)  AS Y
+WHERE Y.rank <4;
+
+
+
+-- Dense Rank --
+
+SELECT e.* , 
+  rank() OVER(PARTITION BY e.department ORDER BY e.salary DESC) AS rank , 
+  dense_rank() OVER(PARTITION BY e.department ORDER BY e.salary DESC) AS dense_rank,
+  row_number() OVER(PARTITION BY e.department ORDER BY e.salary DESC) AS RN
+  FROM employees_new e;
+  
+  
+  
+-- LAG  LEAD--
+
+
+SELECT e.*,
+  lag(e.salary) OVER(PARTITION BY e.department ORDER BY e.salary DESC) AS previous_emp_salary,
+  lead(e.salary) OVER(PARTITION BY e.department ORDER BY e.salary DESC) AS next_emp_salary
+FROM employees_new e;
+
+
+
+SELECT e.*,
+lag(e.salary) OVER(PARTITION BY e.department ORDER BY e.id) AS previous_emp_salary,
+  CASE when e.salary > lag(e.salary) OVER(PARTITION BY e.department ORDER BY e.id) then 'Higer than previous emp salary'
+       when e.salary < lag(e.salary) OVER(PARTITION BY e.department ORDER BY e.id) then 'Lower than previous emp salary'
+       when e.salary = lag(e.salary) OVER(PARTITION BY e.department ORDER BY e.id) then 'Equal AS previous emp salary'
+       END sal_range
+FROM employees_new e;
+
+
+SELECT e.*,
+    lag(e.salary) OVER(PARTITION BY e.department ORDER BY e.id) AS previous_emp_salary,
+    CASE 
+        WHEN e.salary IS NULL OR lag(e.salary) OVER(PARTITION BY e.department ORDER BY e.id) IS NULL THEN 'No comparison'
+        WHEN e.salary > lag(e.salary) OVER(PARTITION BY e.department ORDER BY e.id) THEN 'Higher than previous emp salary'
+        WHEN e.salary < lag(e.salary) OVER(PARTITION BY e.department ORDER BY e.id) THEN 'Lower than previous emp salary'
+        WHEN e.salary = lag(e.salary) OVER(PARTITION BY e.department ORDER BY e.id) THEN 'Equal to previous emp salary'
+    END sal_range
+FROM employees_new e;
+
+
+
+
+ 
+
+
+
+
+
